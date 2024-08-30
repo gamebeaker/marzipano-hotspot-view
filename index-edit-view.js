@@ -73,6 +73,10 @@
   // Initialize viewer.
   var viewer = new Marzipano.Viewer(panoElement, viewerOpts);
 
+  // Initialize variables for edit-view
+  var id_old_hotspot = null;
+  var id_cur_hotspot = null;
+
   // Create scenes.
   var scenes = data.scenes.map(function(data) {
     var urlPrefix = "tiles";
@@ -185,12 +189,22 @@
     return s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;');
   }
 
-  function switchScene(scene) {
+  function switchScene(scene, hotspot) {
     stopAutorotate();
-    scene.view.setParameters(scene.data.initialViewParameters);
+    if (hotspot == undefined) {
+      id_old_hotspot = null;
+    }else{
+      id_old_hotspot = id_cur_hotspot;
+    }
+    if (hotspot == undefined || hotspot.initialViewParameters == undefined) {
+      scene.view.setParameters(scene.data.initialViewParameters);
+    }else{
+        scene.view.setParameters(hotspot.initialViewParameters);
+    }
+    id_cur_hotspot = scene.data.id;
     scene.scene.switchTo();
     startAutorotate();
-    updateSceneName(scene);
+    sceneNameElement.innerHTML = id_old_hotspot + " -> " + id_cur_hotspot;
     updateSceneList(scene);
   }
 
@@ -268,7 +282,7 @@
 
     // Add click event handler.
     wrapper.addEventListener('click', function() {
-      switchScene(findSceneById(hotspot.target));
+      switchScene(findSceneById(hotspot.target), hotspot);
     });
 
     // Prevent touch and scroll events from reaching the parent element.
@@ -388,6 +402,71 @@
     }
     return null;
   }
+
+  function findSceneIdById(id) {
+    for (var i = 0; i < data.scenes.length; i++) {
+      if (data.scenes[i].id === id) {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  function findHotspotIdByTarget(linkHotspots, target) {
+    for (var i = 0; i < linkHotspots.length; i++) {
+      if (linkHotspots[i].target == target) {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  function update_APP_DATA(){
+    var view = viewer.view();
+    var scenes_id = findSceneIdById(id_old_hotspot);
+    if (scenes_id == null) {
+      return;
+    }
+    var Hotspot_id = findHotspotIdByTarget(APP_DATA.scenes[scenes_id].linkHotspots, id_cur_hotspot);
+    if (Hotspot_id == null) {
+      return;
+    }
+    var new_view_para = {
+      "yaw": view._yaw,
+      "pitch": view._pitch,
+      "fov": view._fov
+    };
+    APP_DATA.scenes[scenes_id].linkHotspots[Hotspot_id].initialViewParameters = new_view_para;
+  }
+
+  function download_data(){
+    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent("var APP_DATA = " + JSON.stringify(APP_DATA, null, 2));
+    var downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href",     dataStr);
+    downloadAnchorNode.setAttribute("download", "data.js");
+    document.body.appendChild(downloadAnchorNode); // required for firefox
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  }
+
+  //insert buttons in html
+  var list = document.getElementById("sceneList");
+  var newNode = document.createElement("button");
+  newNode.setAttribute("id", "Download_data_btn");
+  newNode.innerHTML = "Download data.js";
+  list.insertBefore(newNode, list.children[0]);
+  newNode = document.createElement("button");
+  newNode.setAttribute("id", "Create_new_View_btn");
+  newNode.innerHTML = "Save new view";
+  list.insertBefore(newNode, list.children[0]);
+
+  document.getElementById("Create_new_View_btn").addEventListener('click', function() {
+    update_APP_DATA();
+  });
+
+  document.getElementById("Download_data_btn").addEventListener('click', function() {
+    download_data();
+  });
 
   // Display the initial scene.
   switchScene(scenes[0]);
