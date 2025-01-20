@@ -35,7 +35,7 @@ Tutorial:
 
 ![image](https://github.com/user-attachments/assets/e568b719-8bd7-4b27-8d1c-b08902aece85)
 
-7. Open your marzipano project in your browser
+7. Open your marzipano project in your browser (with: `npx http-server` you can start a simple localhost server)
 
 Now you have 2 more buttons in your Project "Save new view" and "Download data.js"
 
